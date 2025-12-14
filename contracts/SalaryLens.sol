@@ -144,12 +144,17 @@ contract SalaryLens is ZamaEthereumConfig {
 
         // Convert the encrypted input to euint32 with proof validation
         euint32 salary = FHE.fromExternal(encryptedSalary, inputProof);
+        
+        // CRITICAL: Grant contract permission to access the input salary BEFORE using it
+        // Per Zama docs: "the calling contract must already have ACL permission to access the handle"
+        FHE.allowThis(salary);
 
         // Add to running total
         // Note: On first submission, encryptedTotal is uninitialized (zero)
         if (count == 0) {
             encryptedTotal = salary;
         } else {
+            // Contract now has permission to access both encryptedTotal and salary
             encryptedTotal = FHE.add(encryptedTotal, salary);
         }
 
@@ -159,9 +164,9 @@ contract SalaryLens is ZamaEthereumConfig {
         // Mark user as having submitted
         hasSubmitted[msg.sender] = true;
 
-        // CRITICAL: Grant permissions per Zama best practices
+        // CRITICAL: Grant permissions on the NEW encryptedTotal for future operations
         // Both contract AND user permissions are required
-        FHE.allowThis(encryptedTotal);  // Contract permission
+        FHE.allowThis(encryptedTotal);  // Contract permission for future FHE.div()
         FHE.allow(encryptedTotal, msg.sender);  // User permission
 
         emit SalarySubmitted(msg.sender, count);
