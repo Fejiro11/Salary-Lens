@@ -145,6 +145,9 @@ contract SalaryLens is ZamaEthereumConfig {
         // Convert the encrypted input to euint32 with proof validation
         euint32 salary = FHE.fromExternal(encryptedSalary, inputProof);
         
+        // Verify the input was properly converted
+        require(FHE.isInitialized(salary), "salary not initialized from input");
+        
         // CRITICAL: Grant contract permission to access the input salary BEFORE using it
         // Per Zama docs: "the calling contract must already have ACL permission to access the handle"
         FHE.allowThis(salary);
@@ -191,9 +194,15 @@ contract SalaryLens is ZamaEthereumConfig {
             revert NoSalariesSubmitted();
         }
 
+        // Verify encryptedTotal is properly initialized before using
+        require(FHE.isInitialized(encryptedTotal), "encryptedTotal not initialized");
+
         // Calculate encrypted average: total / count
         // Using FHE.div for encrypted division by plaintext
         euint32 encryptedAverage = FHE.div(encryptedTotal, count);
+
+        // Verify the result is valid
+        require(FHE.isInitialized(encryptedAverage), "encryptedAverage not initialized");
 
         // Grant permissions for the average result
         FHE.allowThis(encryptedAverage);  // Contract permission
