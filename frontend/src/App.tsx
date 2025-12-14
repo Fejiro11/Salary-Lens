@@ -391,6 +391,14 @@ function App() {
       }
 
       // Production mode with real FHE decryption
+      // First check if there are any salaries submitted
+      const currentCount = await contract!.getCount();
+      console.log('Current salary count:', Number(currentCount));
+      
+      if (Number(currentCount) === 0) {
+        throw new Error('No salaries have been submitted yet. Submit a salary first.');
+      }
+      
       console.log('Requesting average decryption...');
       const tx = await contract!.requestAverageDecryption();
       setState((prev) => ({ ...prev, txStatus: '⏳ Waiting for transaction confirmation...' }));
