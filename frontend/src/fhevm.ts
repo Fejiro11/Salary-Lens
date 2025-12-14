@@ -173,7 +173,7 @@ export async function checkACLPermission(
     console.log('[ACL] isPubliclyDecryptable:', isPublic);
     
     // Check if the contract has permission
-    const contractAddress = '0x2d9b508fc491eddc827b7d3683a66be8ae428279'; // SalaryLens
+    const contractAddress = '0x14558698d4a00e5B8fA640dA0c0E7722996DD6DB'; // SalaryLens (with ACL fix)
     const isAllowedContract = await aclContract.isAllowed(handle, contractAddress);
     console.log('[ACL] isAllowed for contract:', isAllowedContract);
     

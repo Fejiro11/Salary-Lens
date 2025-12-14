@@ -12,8 +12,8 @@ export const CONFIG = {
     blockExplorer: 'https://sepolia.etherscan.io',
   },
 
-  // Contract address - Deployed on Sepolia (V2 with @fhevm/solidity 0.9.x)
-  CONTRACT_ADDRESS: '0x2D9b508fc491eDdC827B7d3683a66be8AE428279',
+  // Contract address - Deployed on Sepolia (V2 with @fhevm/solidity 0.9.x + ACL fix)
+  CONTRACT_ADDRESS: '0x14558698d4a00e5B8fA640dA0c0E7722996DD6DB',
 
   // Zama Relayer URL for FHE operations on Sepolia
   RELAYER_URL: 'https://relayer.testnet.zama.org',
