@@ -83,10 +83,10 @@ export async function encryptSalary(
   const encrypted = await input.encrypt();
 
   // Convert Uint8Array to hex strings for contract interaction
-  const handleHex = '0x' + Array.from(encrypted.handles[0])
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-  const proofHex = '0x' + Array.from(encrypted.inputProof)
-    .map(b => b.toString(16).padStart(2, '0')).join('');
+  const handleHex = '0x' + Array.from(encrypted.handles[0] as Uint8Array)
+    .map((b: number) => b.toString(16).padStart(2, '0')).join('');
+  const proofHex = '0x' + Array.from(encrypted.inputProof as Uint8Array)
+    .map((b: number) => b.toString(16).padStart(2, '0')).join('');
 
   return {
     encryptedSalary: handleHex,

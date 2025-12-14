@@ -418,7 +418,7 @@ function App() {
       }
       
       // Ensure handle is properly formatted as hex string
-      const handleHex = typeof handle === 'string' ? handle : `0x${handle.toString(16).padStart(64, '0')}`;
+      const handleHex = typeof handle === 'string' ? handle : `0x${(handle as bigint).toString(16).padStart(64, '0')}`;
       console.log('Got handle:', handle);
       console.log('Handle as hex:', handleHex);
       console.log('Handle type:', typeof handle);
