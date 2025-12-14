@@ -162,22 +162,102 @@ const ACL_CONTRACT_ADDRESS = '0xf0Ffdc93b7E186bC2f8CB3dAA75D86d1930A433D';
 export async function checkACLPermission(
   handle: string,
   provider: BrowserProvider
-): Promise<{ isPubliclyDecryptable: boolean; isAllowedForContract: boolean }> {
+): Promise<{ isPubliclyDecryptable: boolean; isAllowedForContract: boolean; isAllowedForUser: boolean }> {
   const { Contract } = await import('ethers');
   const aclContract = new Contract(ACL_CONTRACT_ADDRESS, ACL_ABI, provider);
+  const signer = await provider.getSigner();
+  const userAddress = await signer.getAddress();
   
   try {
     const isPublic = await aclContract.isPubliclyDecryptable(handle);
     console.log('[ACL] isPubliclyDecryptable:', isPublic);
     
-    // Also check if the contract has permission
+    // Check if the contract has permission
     const contractAddress = '0x2d9b508fc491eddc827b7d3683a66be8ae428279'; // SalaryLens
-    const isAllowed = await aclContract.isAllowed(handle, contractAddress);
-    console.log('[ACL] isAllowed for contract:', isAllowed);
+    const isAllowedContract = await aclContract.isAllowed(handle, contractAddress);
+    console.log('[ACL] isAllowed for contract:', isAllowedContract);
     
-    return { isPubliclyDecryptable: isPublic, isAllowedForContract: isAllowed };
+    // Check if the user has permission (for user decryption)
+    const isAllowedUser = await aclContract.isAllowed(handle, userAddress);
+    console.log('[ACL] isAllowed for user:', isAllowedUser);
+    
+    return { isPubliclyDecryptable: isPublic, isAllowedForContract: isAllowedContract, isAllowedForUser: isAllowedUser };
   } catch (error) {
     console.error('[ACL] Error checking permissions:', error);
-    return { isPubliclyDecryptable: false, isAllowedForContract: false };
+    return { isPubliclyDecryptable: false, isAllowedForContract: false, isAllowedForUser: false };
   }
+}
+
+/**
+ * Perform user decryption (alternative to public decryption)
+ * Per docs: https://docs.zama.org/protocol/relayer-sdk-guides/fhevm-relayer/decryption/user-decryption
+ * Requires FHE.allow(ciphertext, userAddress) in contract
+ * 
+ * @param handle - The ciphertext handle (hex string)
+ * @param contractAddress - The contract address holding the ciphertext
+ * @param signer - ethers Signer for signing EIP712
+ * @returns The decrypted value
+ */
+export async function userDecrypt(
+  handle: string,
+  contractAddress: string,
+  signer: any
+): Promise<bigint | boolean | string> {
+  if (!fhevmInstance) {
+    throw new Error('FHEVM not initialized. Call initializeFhevm first.');
+  }
+
+  console.log('[userDecrypt] Starting user decryption for handle:', handle);
+  
+  // Generate keypair for user decryption
+  const keypair = fhevmInstance.generateKeypair();
+  console.log('[userDecrypt] Generated keypair');
+  
+  const handleContractPairs = [
+    {
+      handle: handle,
+      contractAddress: contractAddress,
+    },
+  ];
+  
+  const startTimeStamp = Math.floor(Date.now() / 1000).toString();
+  const durationDays = '10';
+  const contractAddresses = [contractAddress];
+  
+  // Create EIP712 signature request
+  const eip712 = fhevmInstance.createEIP712(
+    keypair.publicKey,
+    contractAddresses,
+    startTimeStamp,
+    durationDays,
+  );
+  
+  console.log('[userDecrypt] Created EIP712, requesting signature...');
+  
+  // Sign the EIP712 message
+  const signature = await signer.signTypedData(
+    eip712.domain,
+    {
+      UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
+    },
+    eip712.message,
+  );
+  
+  console.log('[userDecrypt] Got signature, calling userDecrypt...');
+  
+  // Perform user decryption
+  const result = await fhevmInstance.userDecrypt(
+    handleContractPairs,
+    keypair.privateKey,
+    keypair.publicKey,
+    signature.replace('0x', ''),
+    contractAddresses,
+    await signer.getAddress(),
+    startTimeStamp,
+    durationDays,
+  );
+  
+  console.log('[userDecrypt] Result:', result);
+  
+  return result[handle];
 }

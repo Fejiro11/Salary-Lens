@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserProvider, Contract } from 'ethers';
 import { CONFIG, SALARY_LENS_ABI } from './config';
-import { initializeFhevm, encryptSalary, publicDecrypt, checkACLPermission } from './fhevm';
+import { initializeFhevm, encryptSalary, publicDecrypt, checkACLPermission, userDecrypt } from './fhevm';
 
 // Extend window type for ethereum
 declare global {
@@ -429,27 +429,42 @@ function App() {
       const aclStatus = await checkACLPermission(handleHex, provider!);
       console.log('ACL Status:', aclStatus);
       
-      if (!aclStatus.isPubliclyDecryptable) {
-        throw new Error(`Ciphertext is not publicly decryptable. ACL check failed. isPubliclyDecryptable=${aclStatus.isPubliclyDecryptable}, isAllowedForContract=${aclStatus.isAllowedForContract}`);
+      let average: bigint | number;
+      
+      // Try user decryption if user has permission (alternative to public decryption)
+      if (aclStatus.isAllowedForUser) {
+        console.log('User has ACL permission, trying user decryption...');
+        setState((prev) => ({ ...prev, txStatus: '🔑 Requesting user decryption (EIP712 signature required)...' }));
+        
+        const signer = await provider!.getSigner();
+        const decryptedValue = await userDecrypt(handleHex, CONFIG.CONTRACT_ADDRESS, signer);
+        console.log('User decryption result:', decryptedValue);
+        
+        average = typeof decryptedValue === 'bigint' ? decryptedValue : BigInt(decryptedValue as string);
+        
+      } else if (aclStatus.isPubliclyDecryptable) {
+        console.log('Using public decryption...');
+        setState((prev) => ({ ...prev, txStatus: '🔑 Requesting public decryption from Zama Relayer...' }));
+        
+        // Request public decryption via relayer-sdk
+        const decryptResult = await publicDecrypt([handleHex]);
+        console.log('Decryption result:', decryptResult);
+        
+        setState((prev) => ({ ...prev, txStatus: '✅ Verifying decryption proof on-chain...' }));
+        
+        // Submit proof to contract for verification
+        const verifyTx = await contract!.verifyDecryption(
+          decryptResult.abiEncodedClearValues,
+          decryptResult.decryptionProof
+        );
+        await verifyTx.wait();
+        
+        // Get the verified average
+        average = await contract!.getLastAverage(state.address);
+        
+      } else {
+        throw new Error(`No decryption permission. ACL: isPubliclyDecryptable=${aclStatus.isPubliclyDecryptable}, isAllowedForUser=${aclStatus.isAllowedForUser}, isAllowedForContract=${aclStatus.isAllowedForContract}`);
       }
-      
-      setState((prev) => ({ ...prev, txStatus: '🔑 Requesting decryption from Zama Relayer...' }));
-      
-      // Request public decryption via relayer-sdk
-      const decryptResult = await publicDecrypt([handleHex]);
-      console.log('Decryption result:', decryptResult);
-      
-      setState((prev) => ({ ...prev, txStatus: '✅ Verifying decryption proof on-chain...' }));
-      
-      // Submit proof to contract for verification
-      const verifyTx = await contract!.verifyDecryption(
-        decryptResult.abiEncodedClearValues,
-        decryptResult.decryptionProof
-      );
-      await verifyTx.wait();
-      
-      // Get the verified average
-      const average = await contract!.getLastAverage(state.address);
       
       setState((prev) => ({
         ...prev,
