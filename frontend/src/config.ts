@@ -13,7 +13,7 @@ export const CONFIG = {
   },
 
   // Contract address - Deployed on Sepolia (V2 with @fhevm/solidity 0.9.x + ACL fix + isInitialized checks)
-  CONTRACT_ADDRESS: '0x7470E37a9B8A908B776951cc5F487AD91d18707b',
+  CONTRACT_ADDRESS: '0xB097286D209e9Cce3120aFfBEE3E9Ad936D73AF7',
 
   // Zama Relayer URL for FHE operations on Sepolia
   RELAYER_URL: 'https://relayer.testnet.zama.org',
@@ -102,5 +102,19 @@ export const SALARY_LENS_ABI = [
     ],
     name: 'AverageDecrypted',
     type: 'event',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'handle', type: 'bytes32' },
+      { internalType: 'address', name: 'user', type: 'address' },
+    ],
+    name: 'checkPermissions',
+    outputs: [
+      { internalType: 'bool', name: 'isPublic', type: 'bool' },
+      { internalType: 'bool', name: 'isContractAllowed', type: 'bool' },
+      { internalType: 'bool', name: 'isUserAllowed', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
   },
 ] as const;
