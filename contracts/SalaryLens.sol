@@ -196,20 +196,17 @@ contract SalaryLens is ZamaEthereumConfig {
 
         // Verify encryptedTotal is properly initialized before using
         require(FHE.isInitialized(encryptedTotal), "encryptedTotal not initialized");
-        
-        // Verify sender has permission (prevents inference attacks)
-        require(FHE.isSenderAllowed(encryptedTotal), "sender not allowed on encryptedTotal");
 
         // Calculate encrypted average: total / count
-        // FHE.div takes (euint32, uint32) - encrypted divided by plaintext
+        // Using FHE.div for encrypted division by plaintext
         euint32 encryptedAverage = FHE.div(encryptedTotal, count);
 
         // Verify the result is valid
         require(FHE.isInitialized(encryptedAverage), "encryptedAverage not initialized");
 
-        // Grant permissions for the average result using method chaining
-        FHE.allowThis(encryptedAverage);
-        FHE.allow(encryptedAverage, msg.sender);
+        // Grant permissions for the average result
+        FHE.allowThis(encryptedAverage);  // Contract permission
+        FHE.allow(encryptedAverage, msg.sender);  // User permission
 
         // Mark as publicly decryptable for off-chain relayer
         FHE.makePubliclyDecryptable(encryptedAverage);
@@ -311,25 +308,5 @@ contract SalaryLens is ZamaEthereumConfig {
      */
     function getPendingHandle(address user) external view returns (bytes32) {
         return pendingDecryptionHandles[user];
-    }
-
-    /**
-     * @notice Debug function to check ACL permissions for a handle
-     * @dev Call this after requestAverageDecryption to verify permissions were set
-     * @param handle The ciphertext handle to check
-     * @param user The user address to check permission for
-     * @return isPublic Whether the handle is publicly decryptable
-     * @return isContractAllowed Whether this contract has permission
-     * @return isUserAllowed Whether the user has permission
-     */
-    function checkPermissions(bytes32 handle, address user) external view returns (
-        bool isPublic,
-        bool isContractAllowed,
-        bool isUserAllowed
-    ) {
-        euint32 ciphertext = euint32.wrap(handle);
-        isPublic = FHE.isPubliclyDecryptable(ciphertext);
-        isContractAllowed = FHE.isAllowed(ciphertext, address(this));
-        isUserAllowed = FHE.isAllowed(ciphertext, user);
     }
 }
